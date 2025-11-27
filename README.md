@@ -13,18 +13,21 @@ ScholarSidekick helps teams transform their weekly one-on-one meeting transcript
 ## Features
 
 - **Transcript Processing**: Upload meeting transcripts and agenda items
+- **Google Docs Integration**: Import transcripts directly from Google Docs
 - **Smart Extraction**: Extract different types of cards (TL;DR, TODO, Action Items, Decisions, etc.)
 - **Agenda Tracking**: Identify which agenda items were covered vs. missed
 - **Collaborative Canvas**: Visual workspace for organizing and linking cards
 - **Card Linking**: Create hierarchies by linking cards to each other
 - **Updates & Pings**: Keep collaborators informed with updates and notifications
 - **Flexible Organization**: Drag-and-drop positioning, tagging, and status tracking
+- **OAuth2 Authentication**: Secure Google account integration
 
 ## Tech Stack
 
 - **Backend**: Flask (Python)
 - **Database**: Flask-SQLAlchemy with SQLite (easily switchable to PostgreSQL)
 - **Serialization**: Marshmallow schemas
+- **Google Integration**: Google Docs API, OAuth2
 
 ## Setup
 

@@ -43,17 +43,138 @@ GET /
 
 ---
 
+## Google Docs Integration
+
+### Get Authorization URL
+
+Get the Google OAuth2 authorization URL to start the authentication flow.
+
+```
+GET /api/google/auth/url
+```
+
+**Query Parameters:**
+- `redirect_uri` (optional): Custom redirect URI
+
+**Response:**
+```json
+{
+  "authorization_url": "https://accounts.google.com/o/oauth2/auth?...",
+  "state": "random_state_string"
+}
+```
+
+### OAuth Callback
+
+Handles the OAuth2 callback after user authorization.
+
+```
+GET /api/google/auth/callback?code=xxx&state=xxx
+```
+
+This endpoint is automatically called by Google after user authorization.
+
+**Response:**
+```json
+{
+  "message": "Successfully authenticated with Google",
+  "token_received": true
+}
+```
+
+### Check Authentication Status
+
+```
+GET /api/google/auth/status
+```
+
+**Response:**
+```json
+{
+  "authenticated": true,
+  "has_token": true
+}
+```
+
+### Logout
+
+Clear Google authentication session.
+
+```
+POST /api/google/auth/logout
+```
+
+**Response:**
+```json
+{
+  "message": "Successfully logged out from Google"
+}
+```
+
+### Fetch Document by ID
+
+```
+GET /api/google/document/<document_id>
+```
+
+**Query Parameters:**
+- `token` (optional): Access token if not using session
+
+**Response:**
+```json
+{
+  "document_id": "ABC123XYZ",
+  "title": "Meeting Notes",
+  "content": "Full document text...",
+  "metadata": {
+    "title": "Meeting Notes",
+    "document_id": "ABC123XYZ",
+    "revision_id": "123"
+  }
+}
+```
+
+### Fetch Document from URL
+
+```
+POST /api/google/document/from-url
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://docs.google.com/document/d/ABC123.../edit",
+  "token_info": {
+    "token": "optional_if_using_session"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "document_id": "ABC123XYZ",
+  "title": "Meeting Notes",
+  "content": "Full document text...",
+  "metadata": {...}
+}
+```
+
+---
+
 ## Meetings API
 
 ### Create Meeting
 
 Create a new meeting with transcript and extract cards.
 
+**Now supports Google Docs integration!**
+
 ```
 POST /api/meetings/
 ```
 
-**Request Body:**
+**Option 1: Direct Transcript**
 ```json
 {
   "title": "Weekly 1:1 - Alice & Bob",
@@ -62,6 +183,40 @@ POST /api/meetings/
   "agenda_items": ["Project status", "Q4 planning"],
   "meeting_date": "2025-11-26T10:00:00",
   "requested_card_types": ["tldr", "todo", "action_item"]
+}
+```
+
+**Option 2: Google Docs URL** (requires authentication)
+```json
+{
+  "google_doc_url": "https://docs.google.com/document/d/ABC123.../edit",
+  "agenda_items": ["Project status", "Q4 planning"],
+  "meeting_date": "2025-11-27T10:00:00",
+  "requested_card_types": ["tldr", "todo"]
+}
+```
+
+**Option 3: Google Docs ID** (requires authentication)
+```json
+{
+  "google_doc_id": "ABC123XYZ",
+  "title": "Optional - will use doc title if not provided",
+  "meeting_date": "2025-11-27T10:00:00"
+}
+```
+
+**Option 4: With Token Info** (for API usage without session)
+```json
+{
+  "google_doc_url": "https://docs.google.com/document/d/ABC123.../edit",
+  "token_info": {
+    "token": "ya29.xxx",
+    "refresh_token": "xxx",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "client_id": "xxx",
+    "client_secret": "xxx"
+  },
+  "meeting_date": "2025-11-27T10:00:00"
 }
 ```
 

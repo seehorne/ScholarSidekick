@@ -7,6 +7,7 @@ Welcome to the ScholarSidekick backend documentation!
 ### Getting Started
 - **[README.md](README.md)** - Project overview, features, and setup instructions
 - **[QUICKSTART.md](QUICKSTART.md)** - Get started in 3 simple steps
+- **[GOOGLE_SETUP.md](GOOGLE_SETUP.md)** - Set up Google Docs integration
 
 ### Technical Documentation
 - **[SETUP_COMPLETE.md](SETUP_COMPLETE.md)** - Complete overview of the implemented system

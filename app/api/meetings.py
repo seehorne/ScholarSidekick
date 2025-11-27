@@ -1,9 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from datetime import datetime
 from app.database import db
 from app.models import Meeting, Card, Canvas, CardType
 from app.schemas import MeetingSchema, MeetingCreateSchema, MeetingDetailSchema
 from app.services.extraction_service import ExtractionService
+from app.services.google_docs_service import GoogleDocsService
 
 bp = Blueprint('meetings', __name__)
 
@@ -11,19 +12,76 @@ meeting_schema = MeetingSchema()
 meetings_schema = MeetingSchema(many=True)
 meeting_create_schema = MeetingCreateSchema()
 meeting_detail_schema = MeetingDetailSchema()
+google_service = GoogleDocsService()
 
 @bp.route('/', methods=['POST'])
 def create_meeting():
     """
     Create a new meeting and extract cards from transcript.
     
+    This endpoint supports:
+    1. Direct transcript text
+    2. Google Docs URL (requires authentication)
+    
+    Request body can include:
+    - transcript: Direct text
+    - google_doc_url: URL to Google Doc
+    - google_doc_id: Direct document ID
+    
     This endpoint:
-    1. Creates a meeting record
-    2. Extracts cards based on requested_card_types (placeholder for LLM)
-    3. Creates a default canvas
-    4. Returns meeting with generated cards
+    1. Fetches transcript (from text or Google Doc)
+    2. Creates a meeting record
+    3. Extracts cards based on requested_card_types (placeholder for LLM)
+    4. Creates a default canvas
+    5. Returns meeting with generated cards
     """
     data = request.get_json()
+    
+    # Handle Google Docs integration
+    transcript = data.get('transcript')
+    google_doc_url = data.get('google_doc_url')
+    google_doc_id = data.get('google_doc_id')
+    
+    if not transcript and not google_doc_url and not google_doc_id:
+        return jsonify({
+            'error': 'Either transcript, google_doc_url, or google_doc_id is required'
+        }), 400
+    
+    # Fetch from Google Docs if URL or ID provided
+    if google_doc_url or google_doc_id:
+        try:
+            # Get token from session or request
+            token_info = data.get('token_info') or session.get('google_token')
+            
+            if not token_info:
+                return jsonify({
+                    'error': 'Google authentication required',
+                    'message': 'Please authenticate with Google first using /api/google/auth/url'
+                }), 401
+            
+            # Extract document ID if URL provided
+            if google_doc_url:
+                google_doc_id = google_service.extract_document_id_from_url(google_doc_url)
+                if not google_doc_id:
+                    return jsonify({'error': 'Invalid Google Docs URL'}), 400
+            
+            # Fetch document content
+            transcript = google_service.get_document_content(google_doc_id, token_info)
+            doc_metadata = google_service.get_document_metadata(google_doc_id, token_info)
+            
+            # Use document title if no title provided
+            if not data.get('title'):
+                data['title'] = doc_metadata['title']
+            
+        except Exception as e:
+            return jsonify({
+                'error': 'Failed to fetch Google Doc',
+                'message': str(e)
+            }), 500
+    
+    # Update data with fetched transcript
+    data['transcript'] = transcript
+    
     errors = meeting_create_schema.validate(data)
     if errors:
         return jsonify(errors), 400
