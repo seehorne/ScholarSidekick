@@ -3,12 +3,16 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { View, CardData, CardCategory, Connection } from './types';
 import InputView from './components/InputView';
 import ResultsView from './components/ResultsView';
+import ApiKeyInput from './components/ApiKeyInput';
 import { extractMeetingItems } from './services/geminiService';
 
 const App: React.FC = () => {
   const [view, setView] = useState<View>('input');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [apiKey, setApiKey] = useState<string>('');
+  const [isApiKeySet, setIsApiKeySet] = useState<boolean>(false);
 
   const [transcript, setTranscript] = useState<string>('');
   const [agenda, setAgenda] = useState<string>('');
@@ -19,6 +23,11 @@ const App: React.FC = () => {
   const [connections, setConnections] = useState<Connection[]>([]);
 
   const handleExtract = useCallback(async () => {
+    if (!apiKey) {
+      setError('API Key is missing. Please set your API key.');
+      setIsApiKeySet(false);
+      return;
+    }
     if (!transcript.trim()) {
       setError('Meeting transcript cannot be empty.');
       return;
@@ -27,7 +36,7 @@ const App: React.FC = () => {
     setError(null);
 
     try {
-      const extractedData = await extractMeetingItems(transcript, agenda);
+      const extractedData = await extractMeetingItems(transcript, agenda, apiKey);
       
       const newCards: CardData[] = [];
       let yOffset = 140; // Increased Y-offset to avoid overlap with header
@@ -73,11 +82,11 @@ const App: React.FC = () => {
       setView('results');
     } catch (e) {
       console.error(e);
-      setError('Failed to extract items from the transcript. Please check your API key and try again.');
+      setError('Failed to extract items. Please check if your API key is valid and has permissions, then try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [transcript, agenda]);
+  }, [transcript, agenda, apiKey]);
   
   const handleReset = () => {
     setView('input');
@@ -89,9 +98,23 @@ const App: React.FC = () => {
     setMeetingDate(new Date().toISOString().split('T')[0]);
   };
 
+  const handleSetApiKey = () => {
+    if (apiKey.trim()) {
+      setIsApiKeySet(true);
+      setError(null);
+    }
+  };
+  
+  const handleChangeApiKey = () => {
+    setIsApiKeySet(false);
+    // Do not clear the API key itself, let the user see and edit it.
+  };
+
   return (
     <div className="min-h-screen font-sans text-gray-800">
-      {view === 'input' ? (
+      {!isApiKeySet ? (
+         <ApiKeyInput apiKey={apiKey} setApiKey={setApiKey} onSet={handleSetApiKey} />
+      ) : view === 'input' ? (
         <InputView
           transcript={transcript}
           setTranscript={setTranscript}
@@ -109,6 +132,7 @@ const App: React.FC = () => {
           transcript={transcript}
           meetingDate={meetingDate}
           onReset={handleReset}
+          onChangeApiKey={handleChangeApiKey}
         />
       )}
     </div>

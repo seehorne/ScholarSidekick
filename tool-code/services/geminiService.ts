@@ -1,13 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
 const schema = {
   type: Type.OBJECT,
   properties: {
@@ -60,7 +53,12 @@ const schema = {
   required: ['tldr', 'todos', 'reflections', 'unaddressed'],
 };
 
-export async function extractMeetingItems(transcript: string, agenda: string): Promise<any> {
+export async function extractMeetingItems(transcript: string, agenda: string, apiKey: string): Promise<any> {
+  if (!apiKey) {
+    throw new Error("API_KEY is missing.");
+  }
+  const ai = new GoogleGenAI({ apiKey });
+
   const prompt = `
     You are an intelligent assistant for research students. Your task is to analyze a meeting transcript and an optional agenda to extract key information.
 

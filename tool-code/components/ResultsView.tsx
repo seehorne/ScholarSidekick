@@ -8,9 +8,10 @@ interface ResultsViewProps {
   transcript: string;
   meetingDate: string;
   onReset: () => void;
+  onChangeApiKey: () => void;
 }
 
-const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, meetingDate, onReset }) => {
+const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, meetingDate, onReset, onChangeApiKey }) => {
   const [cards, setCards] = useState<CardData[]>(initialCards);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'workspace'>('workspace');
@@ -111,7 +112,10 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
       <aside className="w-1/4 min-w-[300px] bg-white border-r border-gray-200 p-6 flex flex-col shadow-md">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-2xl font-bold text-gray-800">Extracted Items ✨</h2>
-          <button onClick={onReset} className="text-sm text-purple-700 hover:text-purple-900 font-semibold">Start Over ↩️</button>
+           <div className="flex items-center space-x-4">
+            <button onClick={onChangeApiKey} className="text-sm text-gray-500 hover:text-gray-800 font-semibold">Change Key 🔑</button>
+            <button onClick={onReset} className="text-sm text-purple-700 hover:text-purple-900 font-semibold">Start Over ↩️</button>
+          </div>
         </div>
         <p className="text-sm text-gray-500 mb-6">Meeting Date: {meetingDate}</p>
         
