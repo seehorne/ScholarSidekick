@@ -80,13 +80,22 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
     onContentChange(id, localTitle, localContent);
   };
   
+  // Extract hashtags from content
+  const extractHashtags = (text: string): string[] => {
+    const hashtagRegex = /#[\w]+/g;
+    const matches = text.match(hashtagRegex);
+    return matches ? [...new Set(matches)] : []; // Remove duplicates
+  };
+  
+  const hashtags = extractHashtags(localContent);
+  
   const colors = CARD_COLORS[category];
 
   return (
     <div
       ref={cardRef}
-      className={`absolute w-72 p-4 rounded-xl shadow-lg border-2 flex flex-col ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
-      style={{ cursor: 'default', position: 'absolute' }}
+      className={`absolute w-72 p-4 pb-3 rounded-xl shadow-lg border-2 flex flex-col ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
+      style={{ cursor: 'default', position: 'absolute', minHeight: hashtags.length > 0 ? '240px' : '220px' }}
       onMouseUp={() => onEndConnection(id)}
     >
       <div 
@@ -125,6 +134,20 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
         className={`bg-white border-2 border-dotted border-gray-400 rounded-md p-2 mt-2 w-full h-24 text-sm resize-y ${colors.text} focus:ring-1 focus:ring-purple-400 focus:outline-none`}
         onMouseDown={(e) => e.stopPropagation()}
       />
+      
+      {/* Hashtags */}
+      {hashtags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3 mb-1">
+          {hashtags.map((tag, index) => (
+            <span 
+              key={index}
+              className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 border border-blue-300"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
       
       <div 
         className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-gray-400 rounded-full cursor-pointer hover:bg-purple-300 hover:border-purple-500 z-50"

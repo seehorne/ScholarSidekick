@@ -38,7 +38,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     if (workspaceRef.current) {
         const workspace = workspaceRef.current;
         const cardWidth = 288; // w-72 from Card.tsx
-        const cardHeight = 224; // approx height
+        const cardHeight = 260; // Increased to account for hashtags
         newX = workspace.scrollLeft + (workspace.clientWidth / 2) - (cardWidth / 2);
         newY = workspace.scrollTop + (workspace.clientHeight / 2) - (cardHeight / 2);
     }

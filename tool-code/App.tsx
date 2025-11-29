@@ -50,7 +50,7 @@ const App: React.FC = () => {
           position: { x: 20, y: yOffset },
           isAIGenerated: true,
         };
-        yOffset += 220; // Spacing for new cards
+        yOffset += 260; // Increased spacing for cards (was 220) to accommodate hashtags
         return card;
       };
 
