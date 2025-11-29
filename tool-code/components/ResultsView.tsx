@@ -13,11 +13,13 @@ interface ResultsViewProps {
 
 const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, meetingDate, onReset, onChangeApiKey }) => {
   const [cards, setCards] = useState<CardData[]>(initialCards);
+  const [deletedCards, setDeletedCards] = useState<CardData[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'workspace'>('workspace');
   const [connecting, setConnecting] = useState<{ fromId: string } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [hoveredConnection, setHoveredConnection] = useState<{ fromId: string; toId: string } | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
   const [, forceUpdate] = useState({});
 
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,32 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     // Force re-render of connections
     setTimeout(() => forceUpdate({}), 0);
   };
+
+  const handleDeleteCard = useCallback((cardId: string) => {
+    const cardToDelete = cards.find(c => c.id === cardId);
+    if (cardToDelete) {
+      // Move card to trash
+      setDeletedCards(prev => [...prev, cardToDelete]);
+      // Remove card from active cards
+      setCards(prev => prev.filter(c => c.id !== cardId));
+      // Remove any connections involving this card
+      setConnections(prev => prev.filter(conn => conn.fromId !== cardId && conn.toId !== cardId));
+    }
+  }, [cards]);
+
+  const handleRestoreCard = useCallback((cardId: string) => {
+    const cardToRestore = deletedCards.find(c => c.id === cardId);
+    if (cardToRestore) {
+      // Move card back to active cards
+      setCards(prev => [...prev, cardToRestore]);
+      // Remove from trash
+      setDeletedCards(prev => prev.filter(c => c.id !== cardId));
+    }
+  }, [deletedCards]);
+
+  const handlePermanentDelete = useCallback((cardId: string) => {
+    setDeletedCards(prev => prev.filter(c => c.id !== cardId));
+  }, []);
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -162,6 +190,16 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                     + Roadblock 🚧
                 </button>
             </div>
+            
+            {/* Trash Can Button */}
+            <button
+              onClick={() => setShowTrash(!showTrash)}
+              className="w-full mt-4 text-left bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-between"
+            >
+              <span>🗑️ Trash ({deletedCards.length})</span>
+              <span className="text-xs">{showTrash ? '▼' : '▶'}</span>
+            </button>
+            
              <div className="mt-6 p-4 bg-rose-500 rounded-lg text-sm text-white font-semibold text-center">
               <strong>AI-Generated Content:</strong> Please be aware that extracted items may contain inaccuracies. Always verify important information.
             </div>
@@ -310,6 +348,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                 onContentChange={updateCardContent}
                 onStartConnection={handleStartConnection}
                 onEndConnection={handleEndConnection}
+                onDelete={handleDeleteCard}
               >
                {card.category === CardCategory.ROADBLOCK && <StarIcon />}
               </Card>
@@ -317,6 +356,75 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
           </div>
         )}
       </main>
+
+      {/* Trash Modal */}
+      {showTrash && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">🗑️ Trash ({deletedCards.length})</h2>
+              <button
+                onClick={() => setShowTrash(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {deletedCards.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <p className="text-lg">Trash is empty</p>
+              </div>
+            ) : (
+              <div className="flex-grow overflow-y-auto space-y-3">
+                {deletedCards.map(card => (
+                  <div key={card.id} className={`${CARD_COLORS[card.category].bg} ${CARD_COLORS[card.category].border} p-4 rounded-lg border`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${CARD_COLORS[card.category].tagBg} ${CARD_COLORS[card.category].tagText}`}>
+                            {card.category}
+                          </span>
+                          {card.isAIGenerated && (
+                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-200 text-gray-700">
+                              AI Generated
+                            </span>
+                          )}
+                        </div>
+                        <h3 className={`font-bold text-sm ${CARD_COLORS[card.category].title} mb-1`}>{card.title}</h3>
+                        <p className={`text-xs ${CARD_COLORS[card.category].text} line-clamp-2`}>{card.content}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <button
+                          onClick={() => handleRestoreCard(card.id)}
+                          className="text-green-600 hover:text-green-700 p-1.5 bg-green-50 hover:bg-green-100 rounded transition-colors"
+                          title="Restore card"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePermanentDelete(card.id)}
+                          className="text-red-600 hover:text-red-700 p-1.5 bg-red-50 hover:bg-red-100 rounded transition-colors"
+                          title="Delete permanently"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

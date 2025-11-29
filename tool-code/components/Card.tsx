@@ -8,6 +8,7 @@ interface CardProps {
   onContentChange: (id: string, title: string, content: string) => void;
   onStartConnection: (fromId: string) => void;
   onEndConnection: (toId: string) => void;
+  onDelete?: (id: string) => void;
   children?: React.ReactNode;
 }
 
@@ -17,6 +18,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
   onContentChange, 
   onStartConnection, 
   onEndConnection,
+  onDelete,
   children 
 }, ref) => {
   const { id, category, title, content, position, isAIGenerated } = cardData;
@@ -122,13 +124,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
   return (
     <div
       ref={cardRef}
-      className={`absolute w-72 rounded-xl shadow-lg border-2 flex flex-col overflow-hidden ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
-      style={{ cursor: 'default', position: 'absolute', minHeight: `${minHeight}px` }}
+      className={`absolute w-72 rounded-xl shadow-lg border-2 flex flex-col ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
+      style={{ cursor: 'default', position: 'absolute', minHeight: `${minHeight}px`, overflow: 'visible' }}
       onMouseUp={() => onEndConnection(id)}
     >
       {/* Deadline banner at the very top - outside padding */}
       {deadline && (
-        <div className="px-3 py-1.5 bg-red-500 text-white">
+        <div className="px-3 py-1.5 bg-red-500 text-white rounded-t-xl overflow-hidden">
           <div className="flex items-center gap-1.5">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
@@ -163,7 +165,21 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
             onMouseDown={(e) => e.stopPropagation()}
           />
         </div>
-        <div className="pl-2 pt-1">
+        <div className="flex items-start gap-1 pl-2 pt-1">
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(id);
+              }}
+              className="text-gray-400 hover:text-red-500 transition-colors p-1"
+              title="Delete card"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </button>
+          )}
           {children}
         </div>
       </div>
