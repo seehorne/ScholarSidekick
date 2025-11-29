@@ -15,7 +15,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
   const [cards, setCards] = useState<CardData[]>(initialCards);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'workspace'>('workspace');
-  const [connecting, setConnecting] = useState<{ fromId: string; fromHandlePos: { x: number; y: number } } | null>(null);
+  const [connecting, setConnecting] = useState<{ fromId: string } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [hoveredConnection, setHoveredConnection] = useState<{ fromId: string; toId: string } | null>(null);
   const [, forceUpdate] = useState({});
@@ -55,24 +55,25 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
   };
 
   const getHandlePosition = (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
     const cardEl = cardRefs.current[cardId];
-    const workspaceEl = workspaceRef.current;
-    if (!cardEl || !workspaceEl) return { x: 0, y: 0, width: 0, height: 0 };
+    if (!card || !cardEl) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
     
     const cardRect = cardEl.getBoundingClientRect();
-    const workspaceRect = workspaceEl.getBoundingClientRect();
     
-    // Add scroll offset to handle scrolled workspace
+    // Use the card's position data for x/y, and actual dimensions for width/height
     return {
-      x: cardRect.left - workspaceRect.left + workspaceEl.scrollLeft + cardRect.width,
-      y: cardRect.top - workspaceRect.top + workspaceEl.scrollTop + cardRect.height / 2,
+      x: card.position.x + cardRect.width,  // Right edge of card
+      y: card.position.y + cardRect.height / 2,  // Middle of card
       width: cardRect.width,
       height: cardRect.height,
     };
   };
 
   const handleStartConnection = (fromId: string) => {
-    setConnecting({ fromId, fromHandlePos: getHandlePosition(fromId) });
+    setConnecting({ fromId });
   };
   
   const handleEndConnection = (toId: string) => {
@@ -92,7 +93,11 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     const handleMouseMove = (e: MouseEvent) => {
       if(connecting && workspaceRef.current) {
         const rect = workspaceRef.current.getBoundingClientRect();
-        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        // Add scroll offset to get position within the workspace coordinate system
+        setMousePos({ 
+          x: e.clientX - rect.left + workspaceRef.current.scrollLeft, 
+          y: e.clientY - rect.top + workspaceRef.current.scrollTop 
+        });
       }
     };
 
@@ -181,8 +186,17 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                 <p className="text-xs mt-1 text-gray-400">💡 Click on any red connection to delete it</p>
             </div>
 
-            {/* SVG for connections */}
-            <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ minWidth: '2000px', minHeight: '2000px' }}>
+            {/* SVG for connections - dynamically sized to cover all cards */}
+            {(() => {
+              // Calculate the canvas size based on card positions
+              const maxX = Math.max(...cards.map(c => c.position.x + 400), 2000);
+              const maxY = Math.max(...cards.map(c => c.position.y + 300), 2000);
+              
+              return (
+                <svg 
+                  className="absolute top-0 left-0 pointer-events-none" 
+                  style={{ width: `${maxX}px`, height: `${maxY}px` }}
+                >
               <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                       <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
@@ -269,10 +283,23 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                   </g>
                 );
               })}
-              {connecting && (
-                 <line x1={connecting.fromHandlePos.x} y1={connecting.fromHandlePos.y} x2={mousePos.x} y2={mousePos.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="5,5" />
-              )}
-            </svg>
+              {connecting && (() => {
+                const fromPos = getHandlePosition(connecting.fromId);
+                return (
+                  <line 
+                    x1={fromPos.x} 
+                    y1={fromPos.y} 
+                    x2={mousePos.x} 
+                    y2={mousePos.y} 
+                    stroke="#a855f7" 
+                    strokeWidth="2" 
+                    strokeDasharray="5,5" 
+                  />
+                );
+              })()}
+                </svg>
+              );
+            })()}
 
             {cards.map(card => (
               <Card

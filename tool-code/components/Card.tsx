@@ -86,7 +86,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
     <div
       ref={cardRef}
       className={`absolute w-72 p-4 rounded-xl shadow-lg border-2 flex flex-col ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
-      style={{ cursor: 'default' }}
+      style={{ cursor: 'default', position: 'absolute' }}
       onMouseUp={() => onEndConnection(id)}
     >
       <div 
@@ -127,11 +127,13 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
       />
       
       <div 
-        className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-gray-400 rounded-full cursor-pointer hover:bg-purple-300 hover:border-purple-500"
+        className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-gray-400 rounded-full cursor-pointer hover:bg-purple-300 hover:border-purple-500 z-50"
         onMouseDown={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             onStartConnection(id);
         }}
+        style={{ pointerEvents: 'auto' }}
       />
     </div>
   );
