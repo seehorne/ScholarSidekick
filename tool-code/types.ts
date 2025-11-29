@@ -14,6 +14,7 @@ export interface CardData {
   content: string;
   position: { x: number; y: number };
   isAIGenerated: boolean;
+  deadline?: string; // Optional deadline date
 }
 
 export interface Connection {

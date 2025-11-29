@@ -87,33 +87,74 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
     return matches ? [...new Set(matches)] : []; // Remove duplicates
   };
   
+  // Extract deadline from content (reads from "Deadline:" or "Due:" until period)
+  const extractDeadline = (text: string): string | null => {
+    // Match "Deadline:" or "Due:" (case insensitive) followed by text until a period
+    const pattern = /(?:deadline|due):\s*([^.]+)\./i;
+    const match = text.match(pattern);
+    if (match) {
+      return match[1].trim();
+    }
+    
+    // Fallback: try "by DATE" pattern
+    const byPattern = /\bby\s+([^.]+)\./i;
+    const byMatch = text.match(byPattern);
+    if (byMatch) {
+      return byMatch[1].trim();
+    }
+    
+    return null;
+  };
+  
   const hashtags = extractHashtags(localContent);
+  const extractedDeadline = extractDeadline(localContent);
+  const deadline = cardData.deadline || extractedDeadline;
   
   const colors = CARD_COLORS[category];
+  
+  // Calculate minimum height based on content
+  const hasDeadline = !!deadline;
+  const hasHashtags = hashtags.length > 0;
+  let minHeight = 220;
+  if (hasDeadline) minHeight += 30; // Add space for deadline banner
+  if (hasHashtags) minHeight += 20; // Add space for hashtags
 
   return (
     <div
       ref={cardRef}
-      className={`absolute w-72 p-4 pb-3 rounded-xl shadow-lg border-2 flex flex-col ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
-      style={{ cursor: 'default', position: 'absolute', minHeight: hashtags.length > 0 ? '240px' : '220px' }}
+      className={`absolute w-72 rounded-xl shadow-lg border-2 flex flex-col overflow-hidden ${colors.bg} ${colors.border} transition-shadow hover:shadow-2xl`}
+      style={{ cursor: 'default', position: 'absolute', minHeight: `${minHeight}px` }}
       onMouseUp={() => onEndConnection(id)}
     >
-      <div 
-        className="card-header flex justify-between items-start pb-2 cursor-move"
-        onMouseDown={handleMouseDown}
-      >
-        <div className="flex-grow">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors.tagBg} ${colors.tagText}`}>
-              {category}
-            </span>
-            {isAIGenerated && (
-              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-200 text-gray-700">
-                AI Generated
-              </span>
-            )}
+      {/* Deadline banner at the very top - outside padding */}
+      {deadline && (
+        <div className="px-3 py-1.5 bg-red-500 text-white">
+          <div className="flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            </svg>
+            <span className="text-xs font-bold">Due: {deadline}</span>
           </div>
-          <input 
+        </div>
+      )}
+      
+      <div className="p-4 pb-3 flex-grow flex flex-col">
+        <div 
+          className="card-header flex justify-between items-start pb-2 cursor-move"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="flex-grow">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${colors.tagBg} ${colors.tagText}`}>
+                {category}
+              </span>
+              {isAIGenerated && (
+                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-200 text-gray-700">
+                  AI Generated
+                </span>
+              )}
+            </div>
+            <input 
             type="text"
             value={localTitle}
             onChange={(e) => setLocalTitle(e.target.value)}
@@ -158,6 +199,7 @@ const Card = forwardRef<HTMLDivElement, CardProps>(({
         }}
         style={{ pointerEvents: 'auto' }}
       />
+      </div>
     </div>
   );
 });
