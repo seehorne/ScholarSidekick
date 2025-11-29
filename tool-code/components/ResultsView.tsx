@@ -17,6 +17,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
   const [viewMode, setViewMode] = useState<'list' | 'workspace'>('workspace');
   const [connecting, setConnecting] = useState<{ fromId: string; fromHandlePos: { x: number; y: number } } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [hoveredConnection, setHoveredConnection] = useState<{ fromId: string; toId: string } | null>(null);
+  const [, forceUpdate] = useState({});
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -60,9 +62,10 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     const cardRect = cardEl.getBoundingClientRect();
     const workspaceRect = workspaceEl.getBoundingClientRect();
     
+    // Add scroll offset to handle scrolled workspace
     return {
-      x: cardRect.left - workspaceRect.left + cardRect.width,
-      y: cardRect.top - workspaceRect.top + cardRect.height / 2,
+      x: cardRect.left - workspaceRect.left + workspaceEl.scrollLeft + cardRect.width,
+      y: cardRect.top - workspaceRect.top + workspaceEl.scrollTop + cardRect.height / 2,
       width: cardRect.width,
       height: cardRect.height,
     };
@@ -77,6 +80,12 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
       setConnections(prev => [...prev, { fromId: connecting.fromId, toId }]);
     }
     setConnecting(null);
+  };
+
+  const handleDisconnect = (fromId: string, toId: string) => {
+    setConnections(prev => prev.filter(conn => !(conn.fromId === fromId && conn.toId === toId)));
+    // Force re-render of connections
+    setTimeout(() => forceUpdate({}), 0);
   };
   
   useEffect(() => {
@@ -168,7 +177,8 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
           <div ref={workspaceRef} className="relative w-full h-full bg-white rounded-lg shadow-inner border border-gray-200 overflow-auto" onClick={() => connecting && setConnecting(null)}>
             <div className="absolute top-4 left-4 text-gray-500 p-4 rounded-lg bg-white/80 backdrop-blur-sm z-20 pointer-events-none border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-700">Workspace Canvas 🎨</h2>
-                <p className="text-sm mt-1">Add items from the sidebar. You can move them around and draw connections between them.</p>
+                <p className="text-sm mt-1">Add items from the sidebar. Move cards around and draw connections.</p>
+                <p className="text-xs mt-1 text-gray-400">💡 Click on any red connection to delete it</p>
             </div>
 
             {/* SVG for connections */}
@@ -177,18 +187,87 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                   <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                       <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
                   </marker>
+                  <marker id="arrow-hover" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                  </marker>
               </defs>
               {connections.map(({ fromId, toId }) => {
                 const fromPos = getHandlePosition(fromId);
                 const toPos = getHandlePosition(toId);
                 const toCard = cards.find(c => c.id === toId);
                 if (!toCard) return null;
-                const toElPos = toCard.position;
+                
+                // Calculate the left edge of the target card (where arrow should point)
+                const toX = toPos.x - toPos.width; // Left edge of target card
+                const toY = toPos.y; // Middle of target card
+                
+                const isHovered = hoveredConnection?.fromId === fromId && hoveredConnection?.toId === toId;
+                
+                // Calculate midpoint for disconnect button
+                const midX = (fromPos.x + toX) / 2;
+                const midY = (fromPos.y + toY) / 2;
 
-                return <line key={`${fromId}-${toId}`} 
-                  x1={fromPos.x} y1={fromPos.y} 
-                  x2={toElPos.x} y2={toPos.y} 
-                  stroke="#9ca3af" strokeWidth="2" markerEnd="url(#arrow)" />
+                return (
+                  <g key={`${fromId}-${toId}`}>
+                    {/* Clickable thick line for hovering and deletion */}
+                    <line 
+                      x1={fromPos.x} y1={fromPos.y} 
+                      x2={toX} y2={toY} 
+                      stroke="transparent" 
+                      strokeWidth="20" 
+                      className="pointer-events-auto cursor-pointer"
+                      onMouseEnter={() => setHoveredConnection({ fromId, toId })}
+                      onMouseLeave={() => setHoveredConnection(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isHovered) {
+                          handleDisconnect(fromId, toId);
+                          setHoveredConnection(null);
+                        }
+                      }}
+                    />
+                    {/* Visible line */}
+                    <line 
+                      x1={fromPos.x} y1={fromPos.y} 
+                      x2={toX} y2={toY} 
+                      stroke={isHovered ? "#ef4444" : "#9ca3af"} 
+                      strokeWidth={isHovered ? "3" : "2"} 
+                      markerEnd={isHovered ? "url(#arrow-hover)" : "url(#arrow)"}
+                      className="pointer-events-none transition-all"
+                    />
+                    {/* Visual indicator on hover */}
+                    {isHovered && (
+                      <g className="pointer-events-none">
+                        <circle 
+                          cx={midX} 
+                          cy={midY} 
+                          r="12" 
+                          fill="#ef4444" 
+                          stroke="white" 
+                          strokeWidth="2"
+                        />
+                        <line 
+                          x1={midX - 5} 
+                          y1={midY - 5} 
+                          x2={midX + 5} 
+                          y2={midY + 5} 
+                          stroke="white" 
+                          strokeWidth="2" 
+                          strokeLinecap="round"
+                        />
+                        <line 
+                          x1={midX + 5} 
+                          y1={midY - 5} 
+                          x2={midX - 5} 
+                          y2={midY + 5} 
+                          stroke="white" 
+                          strokeWidth="2" 
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    )}
+                  </g>
+                );
               })}
               {connecting && (
                  <line x1={connecting.fromHandlePos.x} y1={connecting.fromHandlePos.y} x2={mousePos.x} y2={mousePos.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="5,5" />
