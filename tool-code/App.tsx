@@ -1,0 +1,118 @@
+import React, { useState, useCallback } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+import { View, CardData, CardCategory, Connection } from './types';
+import InputView from './components/InputView';
+import ResultsView from './components/ResultsView';
+import { extractMeetingItems } from './services/geminiService';
+
+const App: React.FC = () => {
+  const [view, setView] = useState<View>('input');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [transcript, setTranscript] = useState<string>('');
+  const [agenda, setAgenda] = useState<string>('');
+  const [meetingDate, setMeetingDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+
+  const [cards, setCards] = useState<CardData[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
+
+  const handleExtract = useCallback(async () => {
+    if (!transcript.trim()) {
+      setError('Meeting transcript cannot be empty.');
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const extractedData = await extractMeetingItems(transcript, agenda);
+      
+      const newCards: CardData[] = [];
+      let yOffset = 140; // Increased Y-offset to avoid overlap with header
+
+      const createCard = (category: CardCategory, title: string, content: string) => {
+        const card: CardData = {
+          id: `${category}-${Date.now()}-${Math.random()}`,
+          category,
+          title,
+          content,
+          position: { x: 20, y: yOffset },
+          isAIGenerated: true,
+        };
+        yOffset += 220; // Spacing for new cards
+        return card;
+      };
+
+      if (extractedData.tldr) {
+        newCards.push(createCard(CardCategory.TLDR, extractedData.tldr.title, extractedData.tldr.content));
+      }
+      
+      if (extractedData.todos?.length > 0) {
+        extractedData.todos.forEach(item => {
+          newCards.push(createCard(CardCategory.TODO, item.title, item.content));
+        });
+      } else {
+         newCards.push(createCard(CardCategory.TODO, 'No TODOs Found', 'No specific action items were identified in the transcript.'));
+      }
+
+      extractedData.reflections?.forEach(item => {
+        newCards.push(createCard(CardCategory.REFLECTION, item.title, item.content));
+      });
+
+      if (extractedData.unaddressed?.length > 0) {
+        extractedData.unaddressed.forEach(item => {
+          newCards.push(createCard(CardCategory.UNADDRESSED, item.title, item.content));
+        });
+      } else {
+        newCards.push(createCard(CardCategory.UNADDRESSED, 'No Unaddressed Items', 'All agenda items appear to have been covered, or no agenda was provided.'));
+      }
+      
+      setCards(newCards);
+      setView('results');
+    } catch (e) {
+      console.error(e);
+      setError('Failed to extract items from the transcript. Please check your API key and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [transcript, agenda]);
+  
+  const handleReset = () => {
+    setView('input');
+    setTranscript('');
+    setAgenda('');
+    setCards([]);
+    setConnections([]);
+    setError(null);
+    setMeetingDate(new Date().toISOString().split('T')[0]);
+  };
+
+  return (
+    <div className="min-h-screen font-sans text-gray-800">
+      {view === 'input' ? (
+        <InputView
+          transcript={transcript}
+          setTranscript={setTranscript}
+          agenda={agenda}
+          setAgenda={setAgenda}
+          meetingDate={meetingDate}
+          setMeetingDate={setMeetingDate}
+          onExtract={handleExtract}
+          isLoading={isLoading}
+          error={error}
+        />
+      ) : (
+        <ResultsView
+          initialCards={cards}
+          transcript={transcript}
+          meetingDate={meetingDate}
+          onReset={handleReset}
+        />
+      )}
+    </div>
+  );
+};
+
+export default App;
