@@ -29,47 +29,55 @@ ScholarSidekick helps teams transform their weekly one-on-one meeting transcript
 - **Serialization**: Marshmallow schemas
 - **Google Integration**: Google Docs API, OAuth2
 
-## Setup
+## Quick Start
+
+**For complete setup and running instructions, see [GETTING_STARTED.md](GETTING_STARTED.md)**
+
+### One-Command Start
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd ScholarSidekick
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cd tool-code && npm install && cd ..
+
+# Start both backend and frontend
+./start-dev.sh
+```
+
+Then open http://localhost:3000
 
 ### Prerequisites
 
-- Python 3.8+
-- pip
+- Python 3.8+ - Backend runtime
+- Node.js 16+ and npm - Frontend runtime  
+- Git - Version control
 
 ### Installation
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd ScholarSidekick
-```
+- Environment configuration
+- Google Docs integration setup
+- Frontend setup
+- Troubleshooting
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate  # On Windows
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create environment file:
-```bash
-cp .env.example .env
-```
-
-5. Run the application:
-```bash
-python run.py
-```
-
-The API will be available at `http://localhost:5001`
+**👉 See [GETTING_STARTED.md](GETTING_STARTED.md) for the complete guide**
 
 ## Documentation
+
+Comprehensive documentation is available:
+
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - Complete setup and running guide (START HERE!)
+- **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API documentation and examples
+- **[GOOGLE_SETUP.md](GOOGLE_SETUP.md)** - Google Docs integration setup
+- **[GOOGLE_INTEGRATION.md](GOOGLE_INTEGRATION.md)** - Google Docs feature overview
+- **[TESTING.md](TESTING.md)** - Testing guide and results
+
+## API Endpoints (Summary)
+
+### Meetings
 
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in 3 steps
 - **[Setup Complete](SETUP_COMPLETE.md)** - Overview of what's been built
