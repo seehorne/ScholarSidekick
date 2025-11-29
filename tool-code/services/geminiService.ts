@@ -78,7 +78,45 @@ export async function extractMeetingItems(transcript: string, agenda: string, ap
     2.  **TODOs**: A list of all action items and tasks assigned or discussed.
     3.  **Reflections**: A list of key insights, breakthroughs, or important conclusions reached during the meeting.
     4.  **Unaddressed Items**: A list of items from the agenda that were not discussed in the transcript. If no agenda was provided, this can be an empty array.
-  `;
+  ### Formatting rules for TODOs
+
+For each TODO object:
+
+- \`title\` MUST be:
+  - a short, imperative phrase (start with a verb),
+  - about one concrete action,
+  - max ~12 words,
+  - written like: "Continue considering X", "Redo statistics for CHI rebuttal", "Do literature review on needs-finding".
+
+- \`content\` MUST:
+  - briefly describe the details (1–2 sentences),
+  - include a deadline if mentioned in the transcript in the form:
+      "Deadline: <natural-language date or exact date>"
+    If no explicit deadline is given, write:
+      "Deadline: unspecified"
+  - end with one or more hashtags summarizing the topic, like:
+      "#CHI #rebuttal", "#course_registration", "#travel", "#methodology".
+
+Example of a well-formatted TODO:
+
+{
+  "title": "Redo statistical analysis for CHI rebuttal",
+  "content": "Focus on updated tests that work with 10 participants. Deadline: Friday (before deciding on framing). #CHI #rebuttal #statistics"
+}
+
+Another example:
+
+{
+  "title": "Continue considering reframing as design probe (plan B)",
+  "content": "Treat statistical changes as the primary path, keep design-probe framing as backup. Deadline: resubmission deadline in 1.5 weeks. #CHI #design_probe"
+}
+
+### Other sections
+
+- Reflections: make each \`title\` short and high-level (e.g., "Plan A: statistical changes, Plan B: design probe").
+- Unaddressed items: only include agenda items clearly not discussed in the transcript.
+    `;
+
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
