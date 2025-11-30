@@ -13,10 +13,14 @@ interface ResultsViewProps {
 
 const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, meetingDate, onReset, onChangeApiKey }) => {
   const [cards, setCards] = useState<CardData[]>(initialCards);
+  const [deletedCards, setDeletedCards] = useState<CardData[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'workspace'>('workspace');
-  const [connecting, setConnecting] = useState<{ fromId: string; fromHandlePos: { x: number; y: number } } | null>(null);
+  const [connecting, setConnecting] = useState<{ fromId: string } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [hoveredConnection, setHoveredConnection] = useState<{ fromId: string; toId: string } | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
+  const [, forceUpdate] = useState({});
 
   const workspaceRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -36,7 +40,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     if (workspaceRef.current) {
         const workspace = workspaceRef.current;
         const cardWidth = 288; // w-72 from Card.tsx
-        const cardHeight = 224; // approx height
+        const cardHeight = 280; // Increased to account for deadlines + hashtags
         newX = workspace.scrollLeft + (workspace.clientWidth / 2) - (cardWidth / 2);
         newY = workspace.scrollTop + (workspace.clientHeight / 2) - (cardHeight / 2);
     }
@@ -53,23 +57,25 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
   };
 
   const getHandlePosition = (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
     const cardEl = cardRefs.current[cardId];
-    const workspaceEl = workspaceRef.current;
-    if (!cardEl || !workspaceEl) return { x: 0, y: 0, width: 0, height: 0 };
+    if (!card || !cardEl) {
+      return { x: 0, y: 0, width: 0, height: 0 };
+    }
     
     const cardRect = cardEl.getBoundingClientRect();
-    const workspaceRect = workspaceEl.getBoundingClientRect();
     
+    // Use the card's position data for x/y, and actual dimensions for width/height
     return {
-      x: cardRect.left - workspaceRect.left + cardRect.width,
-      y: cardRect.top - workspaceRect.top + cardRect.height / 2,
+      x: card.position.x + cardRect.width,  // Right edge of card
+      y: card.position.y + cardRect.height / 2,  // Middle of card
       width: cardRect.width,
       height: cardRect.height,
     };
   };
 
   const handleStartConnection = (fromId: string) => {
-    setConnecting({ fromId, fromHandlePos: getHandlePosition(fromId) });
+    setConnecting({ fromId });
   };
   
   const handleEndConnection = (toId: string) => {
@@ -78,12 +84,48 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
     }
     setConnecting(null);
   };
+
+  const handleDisconnect = (fromId: string, toId: string) => {
+    setConnections(prev => prev.filter(conn => !(conn.fromId === fromId && conn.toId === toId)));
+    // Force re-render of connections
+    setTimeout(() => forceUpdate({}), 0);
+  };
+
+  const handleDeleteCard = useCallback((cardId: string) => {
+    const cardToDelete = cards.find(c => c.id === cardId);
+    if (cardToDelete) {
+      // Move card to trash
+      setDeletedCards(prev => [...prev, cardToDelete]);
+      // Remove card from active cards
+      setCards(prev => prev.filter(c => c.id !== cardId));
+      // Remove any connections involving this card
+      setConnections(prev => prev.filter(conn => conn.fromId !== cardId && conn.toId !== cardId));
+    }
+  }, [cards]);
+
+  const handleRestoreCard = useCallback((cardId: string) => {
+    const cardToRestore = deletedCards.find(c => c.id === cardId);
+    if (cardToRestore) {
+      // Move card back to active cards
+      setCards(prev => [...prev, cardToRestore]);
+      // Remove from trash
+      setDeletedCards(prev => prev.filter(c => c.id !== cardId));
+    }
+  }, [deletedCards]);
+
+  const handlePermanentDelete = useCallback((cardId: string) => {
+    setDeletedCards(prev => prev.filter(c => c.id !== cardId));
+  }, []);
   
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if(connecting && workspaceRef.current) {
         const rect = workspaceRef.current.getBoundingClientRect();
-        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+        // Add scroll offset to get position within the workspace coordinate system
+        setMousePos({ 
+          x: e.clientX - rect.left + workspaceRef.current.scrollLeft, 
+          y: e.clientY - rect.top + workspaceRef.current.scrollTop 
+        });
       }
     };
 
@@ -148,6 +190,16 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                     + Roadblock 🚧
                 </button>
             </div>
+            
+            {/* Trash Can Button */}
+            <button
+              onClick={() => setShowTrash(!showTrash)}
+              className="w-full mt-4 text-left bg-gray-700 hover:bg-gray-800 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-between"
+            >
+              <span>🗑️ Trash ({deletedCards.length})</span>
+              <span className="text-xs">{showTrash ? '▼' : '▶'}</span>
+            </button>
+            
              <div className="mt-6 p-4 bg-rose-500 rounded-lg text-sm text-white font-semibold text-center">
               <strong>AI-Generated Content:</strong> Please be aware that extracted items may contain inaccuracies. Always verify important information.
             </div>
@@ -168,14 +220,27 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
           <div ref={workspaceRef} className="relative w-full h-full bg-white rounded-lg shadow-inner border border-gray-200 overflow-auto" onClick={() => connecting && setConnecting(null)}>
             <div className="absolute top-4 left-4 text-gray-500 p-4 rounded-lg bg-white/80 backdrop-blur-sm z-20 pointer-events-none border border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-700">Workspace Canvas 🎨</h2>
-                <p className="text-sm mt-1">Add items from the sidebar. You can move them around and draw connections between them.</p>
+                <p className="text-sm mt-1">Add items from the sidebar. Move cards around and draw connections.</p>
+                <p className="text-xs mt-1 text-gray-400">💡 Click on any red connection to delete it</p>
             </div>
 
-            {/* SVG for connections */}
-            <svg className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ minWidth: '2000px', minHeight: '2000px' }}>
+            {/* SVG for connections - dynamically sized to cover all cards */}
+            {(() => {
+              // Calculate the canvas size based on card positions
+              const maxX = Math.max(...cards.map(c => c.position.x + 400), 2000);
+              const maxY = Math.max(...cards.map(c => c.position.y + 300), 2000);
+              
+              return (
+                <svg 
+                  className="absolute top-0 left-0 pointer-events-none" 
+                  style={{ width: `${maxX}px`, height: `${maxY}px` }}
+                >
               <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                       <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
+                  </marker>
+                  <marker id="arrow-hover" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
                   </marker>
               </defs>
               {connections.map(({ fromId, toId }) => {
@@ -183,17 +248,96 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                 const toPos = getHandlePosition(toId);
                 const toCard = cards.find(c => c.id === toId);
                 if (!toCard) return null;
-                const toElPos = toCard.position;
+                
+                // Calculate the left edge of the target card (where arrow should point)
+                const toX = toPos.x - toPos.width; // Left edge of target card
+                const toY = toPos.y; // Middle of target card
+                
+                const isHovered = hoveredConnection?.fromId === fromId && hoveredConnection?.toId === toId;
+                
+                // Calculate midpoint for disconnect button
+                const midX = (fromPos.x + toX) / 2;
+                const midY = (fromPos.y + toY) / 2;
 
-                return <line key={`${fromId}-${toId}`} 
-                  x1={fromPos.x} y1={fromPos.y} 
-                  x2={toElPos.x} y2={toPos.y} 
-                  stroke="#9ca3af" strokeWidth="2" markerEnd="url(#arrow)" />
+                return (
+                  <g key={`${fromId}-${toId}`}>
+                    {/* Clickable thick line for hovering and deletion */}
+                    <line 
+                      x1={fromPos.x} y1={fromPos.y} 
+                      x2={toX} y2={toY} 
+                      stroke="transparent" 
+                      strokeWidth="20" 
+                      className="pointer-events-auto cursor-pointer"
+                      onMouseEnter={() => setHoveredConnection({ fromId, toId })}
+                      onMouseLeave={() => setHoveredConnection(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isHovered) {
+                          handleDisconnect(fromId, toId);
+                          setHoveredConnection(null);
+                        }
+                      }}
+                    />
+                    {/* Visible line */}
+                    <line 
+                      x1={fromPos.x} y1={fromPos.y} 
+                      x2={toX} y2={toY} 
+                      stroke={isHovered ? "#ef4444" : "#9ca3af"} 
+                      strokeWidth={isHovered ? "3" : "2"} 
+                      markerEnd={isHovered ? "url(#arrow-hover)" : "url(#arrow)"}
+                      className="pointer-events-none transition-all"
+                    />
+                    {/* Visual indicator on hover */}
+                    {isHovered && (
+                      <g className="pointer-events-none">
+                        <circle 
+                          cx={midX} 
+                          cy={midY} 
+                          r="12" 
+                          fill="#ef4444" 
+                          stroke="white" 
+                          strokeWidth="2"
+                        />
+                        <line 
+                          x1={midX - 5} 
+                          y1={midY - 5} 
+                          x2={midX + 5} 
+                          y2={midY + 5} 
+                          stroke="white" 
+                          strokeWidth="2" 
+                          strokeLinecap="round"
+                        />
+                        <line 
+                          x1={midX + 5} 
+                          y1={midY - 5} 
+                          x2={midX - 5} 
+                          y2={midY + 5} 
+                          stroke="white" 
+                          strokeWidth="2" 
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    )}
+                  </g>
+                );
               })}
-              {connecting && (
-                 <line x1={connecting.fromHandlePos.x} y1={connecting.fromHandlePos.y} x2={mousePos.x} y2={mousePos.y} stroke="#a855f7" strokeWidth="2" strokeDasharray="5,5" />
-              )}
-            </svg>
+              {connecting && (() => {
+                const fromPos = getHandlePosition(connecting.fromId);
+                return (
+                  <line 
+                    x1={fromPos.x} 
+                    y1={fromPos.y} 
+                    x2={mousePos.x} 
+                    y2={mousePos.y} 
+                    stroke="#a855f7" 
+                    strokeWidth="2" 
+                    strokeDasharray="5,5" 
+                  />
+                );
+              })()}
+                </svg>
+              );
+            })()}
 
             {cards.map(card => (
               <Card
@@ -204,6 +348,7 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
                 onContentChange={updateCardContent}
                 onStartConnection={handleStartConnection}
                 onEndConnection={handleEndConnection}
+                onDelete={handleDeleteCard}
               >
                {card.category === CardCategory.ROADBLOCK && <StarIcon />}
               </Card>
@@ -211,6 +356,75 @@ const ResultsView: React.FC<ResultsViewProps> = ({ initialCards, transcript, mee
           </div>
         )}
       </main>
+
+      {/* Trash Modal */}
+      {showTrash && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">🗑️ Trash ({deletedCards.length})</h2>
+              <button
+                onClick={() => setShowTrash(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            {deletedCards.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <p className="text-lg">Trash is empty</p>
+              </div>
+            ) : (
+              <div className="flex-grow overflow-y-auto space-y-3">
+                {deletedCards.map(card => (
+                  <div key={card.id} className={`${CARD_COLORS[card.category].bg} ${CARD_COLORS[card.category].border} p-4 rounded-lg border`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-grow">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${CARD_COLORS[card.category].tagBg} ${CARD_COLORS[card.category].tagText}`}>
+                            {card.category}
+                          </span>
+                          {card.isAIGenerated && (
+                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-200 text-gray-700">
+                              AI Generated
+                            </span>
+                          )}
+                        </div>
+                        <h3 className={`font-bold text-sm ${CARD_COLORS[card.category].title} mb-1`}>{card.title}</h3>
+                        <p className={`text-xs ${CARD_COLORS[card.category].text} line-clamp-2`}>{card.content}</p>
+                      </div>
+                      <div className="flex flex-col gap-2 ml-4">
+                        <button
+                          onClick={() => handleRestoreCard(card.id)}
+                          className="text-green-600 hover:text-green-700 p-1.5 bg-green-50 hover:bg-green-100 rounded transition-colors"
+                          title="Restore card"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handlePermanentDelete(card.id)}
+                          className="text-red-600 hover:text-red-700 p-1.5 bg-red-50 hover:bg-red-100 rounded transition-colors"
+                          title="Delete permanently"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
