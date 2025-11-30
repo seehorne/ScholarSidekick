@@ -1,33 +1,17 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb"
-      }
-    },
-    {
-      "src": "tool-code/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "tool-code/dist"
-      }
+  "buildCommand": "cd tool-code && npm run build",
+  "outputDirectory": "tool-code/dist",
+  "framework": null,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.11",
+      "maxDuration": 10
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "tool-code/dist/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "tool-code/dist/index.html"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
     }
   ]
 }
