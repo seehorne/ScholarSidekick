@@ -569,7 +569,20 @@ See `app/services/extraction_service.py` for implementation.
 
 ### Deploy to Production
 
+**Quick Deploy to Vercel (Recommended):**
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel --prod
+```
+
+Your app will be live in minutes! See **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)** for complete guide.
+
 **Backend options:**
+- Vercel (Recommended - includes frontend + backend)
 - Railway
 - Render
 - Heroku
@@ -577,7 +590,7 @@ See `app/services/extraction_service.py` for implementation.
 - Google Cloud Run
 
 **Frontend options:**
-- Vercel
+- Vercel (Recommended)
 - Netlify
 - Cloudflare Pages
 
@@ -587,6 +600,8 @@ See `app/services/extraction_service.py` for implementation.
 
 ## Additional Documentation
 
+- **[VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)** - Deploy to Vercel (Recommended)
+- **[QUICK_DEPLOY.md](QUICK_DEPLOY.md)** - Quick deploy reference
 - **[API_REFERENCE.md](API_REFERENCE.md)** - Complete API documentation
 - **[GOOGLE_SETUP.md](GOOGLE_SETUP.md)** - Google Docs integration setup
 - **[GOOGLE_INTEGRATION.md](GOOGLE_INTEGRATION.md)** - Google Docs feature overview
@@ -602,6 +617,7 @@ See `app/services/extraction_service.py` for implementation.
 1. Check this guide first
 2. Review error messages in logs
 3. Check the specific documentation:
+   - Deployment → [VERCEL_DEPLOYMENT.md](VERCEL_DEPLOYMENT.md)
    - API issues → [API_REFERENCE.md](API_REFERENCE.md)
    - Google Docs → [GOOGLE_SETUP.md](GOOGLE_SETUP.md)
    - Testing → [TESTING.md](TESTING.md)
