@@ -10,7 +10,10 @@ from app.api.google import bp as google_bp
 def create_app():
     """Application factory pattern"""
     app = Flask(__name__)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///scholarsidekick.db'
+    
+    # Use environment variable for database URL (required for Vercel)
+    database_url = os.getenv('DATABASE_URL', 'sqlite:///scholarsidekick.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Session configuration for Google OAuth
@@ -43,9 +46,11 @@ def create_app():
     def health_check():
         return jsonify({"status": "healthy"})
     
-    # Create tables
-    with app.app_context():
-        db.create_all()
+    # Create tables - but only if not on Vercel serverless
+    # Vercel has read-only filesystem, so skip table creation
+    if not os.getenv('VERCEL'):
+        with app.app_context():
+            db.create_all()
     
     return app
 

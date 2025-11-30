@@ -1,5 +1,7 @@
-# This file is no longer needed - Vercel uses run.py directly
-# Keeping for reference only
+"""
+Vercel serverless entry point for ScholarSidekick Flask API
+"""
+from app.main import app
 
-# See run.py for the Flask app entry point
+# Vercel will use this app object
 

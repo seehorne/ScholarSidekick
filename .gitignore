@@ -254,3 +254,5 @@ coverage/
 !tsconfig*.json
 !*config.json
 
+.vercel
+.env*.local
