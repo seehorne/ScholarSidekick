@@ -9,7 +9,11 @@ from app.api.google import bp as google_bp
 
 def create_app():
     """Application factory pattern"""
-    app = Flask(__name__)
+    # Disable instance folder on Vercel (read-only filesystem)
+    if os.getenv('VERCEL'):
+        app = Flask(__name__, instance_path='/tmp')
+    else:
+        app = Flask(__name__)
     
     # Use environment variable for database URL (required for Vercel)
     database_url = os.getenv('DATABASE_URL', 'sqlite:///scholarsidekick.db')
