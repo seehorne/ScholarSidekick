@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+*.pid
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development files
+backend.log
+frontend.log
+backend.pid
+frontend.pid
+
+# Tests
+test_*.py
+*_test.py
+
+# Scripts (not needed for deployment)
+start-dev.sh
+stop-dev.sh
+run.py
+
+# Documentation (optional, can remove if you want docs on Vercel)
+# *.md
