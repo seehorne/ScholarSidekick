@@ -56,18 +56,28 @@ def create_app():
     
     @app.route('/health')
     def health_check():
-        db_status = "unknown"
-        try:
-            # Try to ping the database
-            db.session.execute(db.text('SELECT 1'))
-            db_status = "connected"
-        except Exception as e:
-            db_status = f"error: {str(e)[:50]}"
+        db_status = "not_tested"
+        db_error = None
+        
+        # Only test database if DATABASE_URL is set
+        if os.getenv('DATABASE_URL'):
+            try:
+                # Try to ping the database
+                with app.app_context():
+                    db.session.execute(db.text('SELECT 1'))
+                    db_status = "connected"
+            except Exception as e:
+                db_status = "error"
+                db_error = str(e)[:100]
+        else:
+            db_status = "no_database_url"
         
         return jsonify({
             "status": "healthy",
             "database": db_status,
-            "database_url_configured": bool(os.getenv('DATABASE_URL'))
+            "database_error": db_error,
+            "database_url_configured": bool(os.getenv('DATABASE_URL')),
+            "vercel": bool(os.getenv('VERCEL'))
         })
     
     # Create tables - but only if not on Vercel serverless
