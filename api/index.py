@@ -1,11 +1,17 @@
 """
-Vercel Serverless Entry Point - Minimal Test
+Vercel Serverless Entry Point - Flask Minimal Test
 """
+from flask import Flask
 
-def app(environ, start_response):
-    """WSGI application - simplest possible response"""
-    status = '200 OK'
-    headers = [('Content-Type', 'text/plain')]
-    start_response(status, headers)
-    return [b'Python is working on Vercel!\nPath: api/index.py\nRuntime: Python WSGI']
+app = Flask(__name__)
+
+@app.route('/')
+@app.route('/api')
+@app.route('/api/')
+def hello():
+    return 'Flask is working on Vercel!'
+
+@app.route('/api/<path:path>')
+def catch_all(path):
+    return f'Flask caught: {path}'
 
