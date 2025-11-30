@@ -1,3 +1,5 @@
+import os
+import logging
 from flask import Blueprint, request, jsonify, session
 from datetime import datetime
 from app.database import db
@@ -6,6 +8,8 @@ from app.schemas import MeetingSchema, MeetingCreateSchema, MeetingDetailSchema
 from app.services.extraction_service import ExtractionService
 from app.services.google_docs_service import GoogleDocsService
 
+logger = logging.getLogger(__name__)
+
 bp = Blueprint('meetings', __name__)
 
 meeting_schema = MeetingSchema()
@@ -13,6 +17,14 @@ meetings_schema = MeetingSchema(many=True)
 meeting_create_schema = MeetingCreateSchema()
 meeting_detail_schema = MeetingDetailSchema()
 google_service = GoogleDocsService()
+
+
+def get_extraction_service() -> ExtractionService:
+    """Get ExtractionService instance with API key from environment."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY environment variable is not set")
+    return ExtractionService(api_key=api_key)
 
 @bp.route('/', methods=['POST'])
 def create_meeting():
@@ -110,8 +122,16 @@ def create_meeting():
     db.session.add(canvas)
     db.session.flush()
     
-    # Extract cards from transcript (placeholder - will use LLM later)
-    extraction_service = ExtractionService()
+    # Extract cards from transcript using Gemini LLM
+    try:
+        extraction_service = get_extraction_service()
+    except ValueError as e:
+        logger.error(f"Failed to initialize extraction service: {e}")
+        return jsonify({
+            'error': 'LLM service not configured',
+            'message': str(e)
+        }), 500
+    
     requested_types = [CardType(t) for t in data.get('requested_card_types', [CardType.TLDR.value, CardType.TODO.value])]
     extracted_cards = extraction_service.extract_cards(
         transcript=data['transcript'],
@@ -222,8 +242,16 @@ def reextract_cards(meeting_id):
         db.session.add(canvas)
         db.session.flush()
     
-    # Extract new cards
-    extraction_service = ExtractionService()
+    # Extract new cards using Gemini LLM
+    try:
+        extraction_service = get_extraction_service()
+    except ValueError as e:
+        logger.error(f"Failed to initialize extraction service: {e}")
+        return jsonify({
+            'error': 'LLM service not configured',
+            'message': str(e)
+        }), 500
+    
     extracted_cards = extraction_service.extract_cards(
         transcript=meeting.transcript,
         agenda_items=meeting.agenda_items,
