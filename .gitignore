@@ -253,4 +253,5 @@ coverage/
 !package-lock.json
 !tsconfig*.json
 !*config.json
+!vercel.json
 
